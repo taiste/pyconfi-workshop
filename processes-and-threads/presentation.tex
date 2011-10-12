@@ -1,9 +1,12 @@
-\documentclass{beamer}
+\documentclass[13pt,xcolor=dvipsnames]{beamer}
 \usepackage[utf8]{inputenc}
 \usepackage{palatino}
-\usetheme{Warsaw}
+\usepackage{listings}
+\usecolortheme[named=Black]{structure}
+\usefonttheme{serif}
+\usetheme{Pittsburgh}
 
-\title{Going Asynchronous on Python}
+\title{Going Concurrent with Python}
 \author{Mikko Harju}
 \institute{Taiste}
 
@@ -14,26 +17,84 @@
 \end{frame}
 
 \begin{frame}
-    Kukas mää olen?
-    Mitäs mää haluan sanoa?
+    \frametitle{About me}
+    \begin{itemize}
+        \item I'm Mikko Harju, Technology Director at Taiste
+        \item Python user since 2008
+        \item Functional programming enthusiast
+    \end{itemize}
+\end{frame}
 
-    Mitä on säikeet?
-    Mikä vitn GIL?
-    Miten ne juttelee keskenään?
-    Miten saan toteutettua asynkronista toimintaa säikeillä?
-    Mitä juttuja pitää ottaa huomioon?
-    Skaalautuuko se?
+\begin{frame}
+    \frametitle{Agenda}
+    \begin{itemize}
+        \item We'll look slightly at \emph{threading} and more at \emph{processes} and how do they differ when
+            implementing concurrency in Python.
+    \end{itemize}
+\end{frame}
 
-    Mitä on prosessit?
-    Miten ne juttelee keskenään?
-    Miten saan tehtyä asynkronista toimintaa prosessien avulla?
-    No miten ne nyt sitten eroavat säikeistä?
-    No miten niin ne skaalautuu paremmin?
+\begin{frame}
+    \frametitle{Threads}
+    \begin{itemize}
+        \item Threads have classically been the basic construct for parallel programming.
+        \item They live within the process boundary, hence sharing the memory space.
+        \item This makes it fairly trivial to transfer information from one thread to another.
+        \item However, hilarity ensues when mutable state enters the equation\ldots
+    \end{itemize}
+\end{frame}
 
-    Mitä Jyrki oikeen sanoi?  Mitä korutiineja?  Mikä event-loop? 
-    Miten ne eroaa tästä kaikesta? Onko missään mitään järkeä?
-    
-    Mikä on elämän tarkoitus?
+\begin{frame}
+    \frametitle{Threads}
+    \begin{itemize}
+        \item To prevent problems when writing data from multiple threads to a shared state variable we need to
+            introduce different kinds of \emph{locking mechanisms}.
+        \item Possibilities include e.g. mutexes, semaphores and critical sections.
+        \item However, if the threads only access the data in read-only way, there is no need for locking.
+        \item This is called ''Shared-nothing`` -approach. For example Erlang kinda has this with its ''lightweight
+            processes``.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{GIL}
+    \begin{itemize}
+        \item GIL is a mechanism to ensure that threads co-operate nicely with non-thread safe constructs 
+        \item This is done by locking down the interpreter by giving exclusive access to one thread at a time.
+        \item This effectively means that only one CPU bound thread is actually doing anything useful in one
+            python interpreter process at a time.
+        \item When doing I/O, the interpreter can release the lock. The interpreter also has periodic checks to go along
+            with this to make it possible to parallelize CPU bound threads.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{GIL}
+    \begin{itemize}
+        \item When we add more processors (or cores) to the mix, things get more complicated.
+        \item N threads can be scheduled simultaneously on N processors, making them all compete over the GIL. Nice.
+        \item So really, threads are not the right way to go in Python.
+        \item There are some use cases where they might come in handy, where the problem is more I/O bound than CPU
+            bound.
+        \item But let us concentrate on the more fruitful (and the right way if you ask me) of doing real multiprocessor concurrency: \emph{processes}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Processes}
+    \begin{itemize}
+        \item Processes are OS backed construct.
+        \item Each process has its own memory space, stack, registers and that kind of stuff.
+        \item Scheduling is performed by the operating system.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Let's do this!}
+    \begin{itemize}
+        \item Nothing beats practice, so let's do parallel image processing with PIL using the multiprocessing package
+            and see what we come up with. 
+        \item Prepare your terminals :-)
+    \end{itemize}
 \end{frame}
 
 \end{document}
