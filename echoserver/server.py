@@ -11,25 +11,25 @@ class EventLoop(object):
         self.sources = set()
         self.handlers = {}
 
-    def add_handler(self, fd, callback):
-        self.handlers[fd] = callback
-        self.sources.add(fd)
+    def add_handler(self, socket, callback):
+        self.handlers[socket] = callback
+        self.sources.add(socket)
 
-    def close(self, fd):
-        self.sources.discard(fd)
+    def close(self, socket):
+        self.sources.discard(socket)
 
     def start(self):
         poll_timeout = 0.2
 
         while True:
-            r, w, _ = select.select(self.sources, self.sources, [],
-                                    poll_timeout)
-            for fd in r:
-                if fd in self.handlers:
-                    self.handlers[fd](fd, 'READ')
-            for fd in w:
-                if fd in self.handlers:
-                    self.handlers[fd](fd, 'WRITE')
+            readable, writable, errors = select.select(
+                self.sources, self.sources, [], poll_timeout)
+            for sock in readable:
+                if sock in self.handlers:
+                    self.handlers[sock](sock, 'READ')
+            for sock in writable:
+                if sock in self.handlers:
+                    self.handlers[sock](sock, 'WRITE')
 
 
 class EchoServer(object):
@@ -46,24 +46,22 @@ class EchoServer(object):
         self.write_buffer = defaultdict(str)
 
     def start(self):
-        self.eventloop.add_handler(self.socket.fileno(),
-                                   self.handle_new_connection)
+        self.eventloop.add_handler(self.socket, self.handle_new_connection)
 
-    def handle_new_connection(self, fd, event):
-        assert fd == self.socket.fileno()
+    def handle_new_connection(self, sock, event):
+        assert sock == self.socket
 
         try:
             conn, addr = self.socket.accept()
             print 'New connection from %s:%s' % addr
-            self.eventloop.add_handler(conn.fileno(), self.handle_event)
+            self.eventloop.add_handler(conn, self.handle_event)
             self.connection_pool[conn.fileno()] = conn
         except socket.error, e:
             if e.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                 return
             raise
 
-    def handle_event(self, fd, event):
-        conn = self.connection_pool[fd]
+    def handle_event(self, conn, event):
         try:
             if event == 'READ':
                 self.handle_read(conn)
@@ -72,29 +70,27 @@ class EchoServer(object):
         except socket.error, e:
             if e.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                 return
-            print 'Socket %d closed.' % fd
+            print 'Socket %d closed.' % conn.fileno()
 
     def handle_read(self, conn):
-        fd = conn.fileno()
-        self.read_buffer[fd] += conn.recv(4096)
-        self.do_echo(fd)
+        self.read_buffer[conn] += conn.recv(4096)
+        self.do_echo(conn)
 
     def handle_write(self, conn):
-        fd = conn.fileno()
-        if self.write_buffer[fd]:
-            conn.send(self.write_buffer[fd].upper())
-            self.write_buffer[fd] = ''
+        if self.write_buffer[conn]:
+            conn.send(self.write_buffer[conn].upper())
+            self.write_buffer[conn] = ''
             # We've written enuff, close the connection
-            self.close(fd)
+            self.close(conn)
 
-    def do_echo(self, fd):
-        rbuffer = self.read_buffer[fd]
-        self.write_buffer[fd] += rbuffer
-        self.read_buffer[fd] = ''
+    def do_echo(self, conn):
+        rbuffer = self.read_buffer[conn]
+        self.write_buffer[conn] += rbuffer
+        self.read_buffer[conn] = ''
 
-    def close(self, fd):
-        self.eventloop.close(fd)
-        print 'Closed connection %d' % fd
+    def close(self, conn):
+        self.eventloop.close(conn)
+        print 'Closed connection %d' % conn.fileno()
 
 
 if __name__ == '__main__':
