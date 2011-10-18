@@ -1,5 +1,4 @@
 from zipfile import ZipFile
-from taiste.utils import repeat
 from itertools import chain
 from time import time
 from StringIO import StringIO
@@ -16,7 +15,7 @@ def convert_image(zipfile, size, source, destination):
     f.close()
 
 def convert(zipfile, sizes, frame_select=None):
-    def _target(zipfile, index, name):
+    def _targets(zipfile, index, name):
         output = lambda size: name.split('_0')[0] + "_scaled_%s_%05d.jpg" % (size, index,)
         return [ (zipfile, s, name, output(s),) for s in sizes ]
 
@@ -30,8 +29,8 @@ def convert(zipfile, sizes, frame_select=None):
     images_file = ZipFile(zipfile)
     images = [ image 
             for index, image in 
-            enumerate(images_file.namelist()) 
-            if image.endswith('png') and frame_select(index) ] 
+            enumerate(images_file.namelist()[1:]) 
+            if frame_select(index) ] 
 
     pool = Pool()
 
@@ -39,7 +38,7 @@ def convert(zipfile, sizes, frame_select=None):
         pool.apply_async(convert_image, target, callback=_done)
             for target in 
             chain.from_iterable([
-                _target(images_file, index, image) 
+                _targets(images_file, index, image) 
                 for index, image in enumerate(images) ])
         ]
 
