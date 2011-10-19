@@ -1,10 +1,8 @@
-from uuid import uuid4
-from Queue import Queue, Empty
+from Queue import Queue
 
 
 class Task(object):
     def __init__(self, target):
-        self.id = uuid4()
         self.target = target()
         self.target.next()
 
@@ -15,20 +13,14 @@ class Task(object):
 class Scheduler(object):
     def __init__(self):
         self.task_queue = Queue()
-        self.tasks = {}
 
     def new_task(self, target):
         task = Task(target)
-        self.tasks[task.id] = task
         self.task_queue.put(task)
 
     def main_loop(self):
         while self.task_queue:
-            try:
-                task = self.task_queue.get(block=False)
-            except Empty:
-                print 'No more tasks, exiting!'
-                break
+            task = self.task_queue.get(block=False)
 
             try:
                 task.run()

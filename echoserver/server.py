@@ -2,8 +2,6 @@ import errno
 import socket
 import select
 
-from collections import defaultdict
-
 
 class EventLoop(object):
     def __init__(self):
